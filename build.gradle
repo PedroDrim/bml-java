@@ -1,9 +1,11 @@
 plugins {
-    id 'java'
-    id 'application'
+    id('java')
+    id('application')
+    id('jacoco')
+    id('org.graalvm.buildtools.native') version '0.10.3'
 }
 
-group = 'bml'
+group = 'com.exemplo' // Opcional, mas recomendável
 version = '1.0-SNAPSHOT'
 
 repositories {
@@ -11,22 +13,38 @@ repositories {
 }
 
 application {
-    mainClass.set("bml.Main")
+    // Classe principal do projeto
+    mainClass = 'Main'
 }
 
 dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-}
-
-test {
-    useJUnitPlatform()
+    testImplementation('org.junit.jupiter:junit-jupiter')
 }
 
 jar {
     manifest {
         attributes(
-                'Main-Class': 'bml.Main'
+                'Main-Class': 'Main'
         )
+    }
+}
+
+tasks.withType(Test).configureEach {
+    // Usa JUnit 5
+    useJUnitPlatform()
+
+    // Gera relatório do JaCoCo ao final dos testes
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+
+    reports {
+        xml.required.set(true) // Necessário para o SonarQube
+        csv.required.set(false)
+        html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco"))
     }
 }
