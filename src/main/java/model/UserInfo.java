@@ -1,7 +1,5 @@
 package model;
 
-import java.util.Arrays;
-
 /**
  * Informacoes do usuario
  */
@@ -18,20 +16,13 @@ public class UserInfo {
     private String password;
 
     /**
-     * Credito do usuario
-     */
-    private double credit;
-
-    /**
      * Construtor público da classe
      * @param user Nome do usuario
      * @param password Senha do usuario
-     * @param credit Credito do usuario
      */
-    public UserInfo(String user, String password, double credit) {
+    public UserInfo(String user, String password) {
         this.user = user;
         this.password = password;
-        this.credit = credit;
     }
 
     /**
@@ -66,27 +57,6 @@ public class UserInfo {
         this.password = password;
     }
 
-    /**
-     * Obtem o credito do usuario
-     * @return Credito do usuario
-     */
-    public double getCredit() {
-        return credit;
-    }
-
-    /**
-     * Atualiza o credito do usuario
-     * @param credit Novo credito do usuario
-     */
-    public void setCredit(double credit) {
-        this.credit = credit;
-    }
-
-    /**
-     * Metodo privado para encriptar a senha do usuario
-     * @param password Senha a ser encriptada
-     * @return Nova senha encriptada
-     */
     /**
      * Metodo privado para encriptar a senha do usuario
      * @param password Senha a ser encriptada

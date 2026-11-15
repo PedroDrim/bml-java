@@ -1,70 +1,114 @@
-import model.SimpleTableAnalysis;
-import model.Table;
-import model.UserInfo;
-import provider.MaxValueAnalysis;
-import provider.MeanAnalysis;
-import provider.MinValueAnalysis;
+import model.*;
+import model.exception.InvalidParameterException;
+import provider.*;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-/**
- * Classe inicial do programa
- */
 public class Main {
 
-    /**
-     * Método de inicialização do projeto
-     * @param args Lista de parametros obtidos via console
-     */
-    public static void main(String args[]) throws IOException {
+    public static void main(String[] args) throws IOException {
 
-        String arquivo = prepareArgs(args);
-        long leituraInicio = System.currentTimeMillis();
+        if (args.length == 0) throw new InvalidParameterException("Parametros iniciais nao encontrados");
+        String configFile = args[0];
+        CustomConfig properties = loadProperties(configFile);
 
-        Table table = new Table(arquivo);
+        String[] inputList = properties.getINPUT_FILENAME_LIST();
+        String output = properties.getOUTPUT_FILENAME();
 
-        long leituraFim = System.currentTimeMillis();
+        BenchmarkOutput benchmark = new BenchmarkMeasure();
+        TableAnalysis<List<UserInfo>> mergeSortAnalysis = new MergeSortAnalysis();
+        TableAnalysis<List<UserInfo>> quickSortAnalysis = new QuickSortAnalysis();
+        TableAnalysis<List<UserInfo>> languageSortAnalysis = new LanguageSortAnalysis();
+        TableAnalysis<Double[]> summaryAnalysis = new SummaryAnalysis();
 
-        List<UserInfo> list = table.getUserInfoList();
-        SimpleTableAnalysis maxAnalysis = new MaxValueAnalysis();
-        SimpleTableAnalysis minAnalysis = new MinValueAnalysis();
-        SimpleTableAnalysis meanAnalysis = new MeanAnalysis();
-
-        long analiseInicio = System.currentTimeMillis();
-
-        double max = maxAnalysis.analysis(list);
-        double min = minAnalysis.analysis(list);
-        double mean = meanAnalysis.analysis(list);
-
-        long analiseFim = System.currentTimeMillis();
-
-        StringBuilder builder = new StringBuilder();
-
-        builder.append("[OK]Arquivo: ").append(arquivo).append("\n");
-        builder.append("[OK]Tempo_leitura: ").append((leituraFim - leituraInicio)).append(" ms").append("\n");
-        builder.append("[OK]Tempo_analise: ").append((analiseFim - analiseInicio)).append(" ms").append("\n");
-        builder.append("[OK]Max: ").append(max).append("\n");
-        builder.append("[OK]Min: ").append(min).append("\n");
-        builder.append("[OK]Mean: ").append(mean).append("\n");
-
-        System.out.println(builder.toString());
-
-    }
-
-    /**
-     * Método para captura e tratamento dos parametros obtidos via console
-     * @param codes Lista de parametros obtidos via console
-     * @return Nome do arquivo de usuarios
-     */
-    private static String prepareArgs(String codes[]) {
-        if(codes.length != 1) {
-            System.out.println("Parametros inválidos.");
-            System.exit(-1);
+        for (int index = 0; index < inputList.length; index++) {
+            String input = inputList[index];
+            System.out.println("[START] Arquivo: " + index);
+            //==================================================
+            // Leitura dos dados
+            System.out.println("\t[LOG] Read");
+            benchmark.start("Read@" + index);
+            TableReader tableReader = new TableReader(input);
+            tableReader.open();
+            List<UserInfo> userInfoList = tableReader.read();
+            benchmark.end("Read@" + index);
+            //==================================================
+            // Analise dos dados (Summary)
+            System.out.println("\t[LOG] Summary");
+            benchmark.start("SummaryAnalysis@" + index);
+            Double[] summary = summaryAnalysis.analysis(userInfoList);
+            benchmark.end("SummaryAnalysis@" + index);
+            //==================================================
+            // Analise dos dados (Merge)
+            System.out.println("\t[LOG] Merge");
+            benchmark.start("MergeAnalysis@" + index);
+            List<UserInfo> mergeValue = mergeSortAnalysis.analysis(userInfoList);
+            benchmark.end("MergeAnalysis@" + index);
+            //==================================================
+            // Analise dos dados (Quick)
+            System.out.println("\t[LOG] Quick");
+            benchmark.start("QuickAnalyse@" + index);
+            List<UserInfo> quickValue = quickSortAnalysis.analysis(userInfoList);
+            benchmark.end("QuickAnalyse@" + index);
+            //==================================================
+            // Analise dos dados (Language)
+            System.out.println("\t[LOG] Language");
+            benchmark.start("LanguageAnalyse@" + index);
+            List<UserInfo> languageValue = languageSortAnalysis.analysis(userInfoList);
+            benchmark.end("LanguageAnalyse@" + index);
+            //==================================================
+            System.out.println("[END] Arquivo: " + index);
         }
 
-        String line = codes[0];
-        return line;
+        benchmark.export(output, TimeFormat.MILISSEGUNDOS);
     }
 
+    public static CustomConfig loadProperties(String configFile) throws IOException {
+        String jsonString = Files.readString(Path.of(configFile), StandardCharsets.UTF_8);
+        CustomConfig customConfig = parseJsonToConfig(jsonString);
+        return customConfig;
+    }
+
+    public static CustomConfig parseJsonToConfig(String json) {
+        // Remove espaços extras, quebras de linha e mantém o formato correto
+        String cleanedJson = json.replace("\n", "").replace("\r", "").replace(" ", "");
+
+        // Extração manual dos valores
+        Pattern inputListRegex = Pattern.compile("\"INPUT_FILENAME_LIST\":\\[(.*?)\\]");
+        Pattern outputFileRegex = Pattern.compile("\"OUTPUT_FILENAME\":\"(.*?)\"");
+
+        // Encontrando correspondências
+        Matcher inputListMatch = inputListRegex.matcher(cleanedJson);
+        Matcher outputFileMatch = outputFileRegex.matcher(cleanedJson);
+
+        // Convertendo INPUT_FILENAME_LIST para String[]
+        String[] inputFileNameList = new String[0];
+        if (inputListMatch.find()) {
+            String[] parts = inputListMatch.group(1).split(",", -1); // Divide pelos elementos da lista
+            inputFileNameList = new String[parts.length];
+            for (int i = 0; i < parts.length; i++) {
+                inputFileNameList[i] = removeSurrounding(parts[i].trim(), "\""); // Remove espaços e aspas
+            }
+        }
+
+        // Extraindo OUTPUT_FILENAME
+        String outputFileName = outputFileMatch.find() ? outputFileMatch.group(1) : "";
+
+        return new CustomConfig(inputFileNameList, outputFileName);
+    }
+
+    private static String removeSurrounding(String value, String delimiter) {
+        if (value.length() >= 2 * delimiter.length()
+                && value.startsWith(delimiter) && value.endsWith(delimiter)) {
+            return value.substring(delimiter.length(), value.length() - delimiter.length());
+        }
+        return value;
+    }
 }
+
