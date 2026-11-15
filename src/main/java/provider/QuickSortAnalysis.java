@@ -4,6 +4,7 @@ import model.TableAnalysis;
 import model.UserInfo;
 import model.exception.InvalidParameterException;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -11,8 +12,6 @@ import java.util.List;
  * @see TableAnalysis
  */
 public class QuickSortAnalysis implements TableAnalysis<List<UserInfo>> {
-
-    private UserInfo[] arrayUserInfo;
 
     /**
      * Realiza uma analise ordenacao quickSort
@@ -25,61 +24,29 @@ public class QuickSortAnalysis implements TableAnalysis<List<UserInfo>> {
         if(userInfoList == null || userInfoList.isEmpty())
             throw new InvalidParameterException("'userInfoList' é null ou vazio");
 
-        this.arrayUserInfo = new UserInfo[userInfoList.size()];
-        this.arrayUserInfo = userInfoList.toArray(this.arrayUserInfo);
-
-        this.quickSort(0, this.arrayUserInfo.length - 1);
-
-        return List.of(arrayUserInfo);
+        return this.quickSort(userInfoList);
     }
 
     /**
      * Iniciando quickSort
-     * @param baixo index inicial
-     * @param alto index final
+     * @param array Vetor a ser ordenado
      */
-    private void quickSort(int baixo, int alto) {
-        if(baixo > alto) throw new InvalidParameterException("'baixo' é maior que 'alto'");
+    private List<UserInfo> quickSort(List<UserInfo> array) {
+        if(array.size() <= 1) return array;
 
-        int indexInicio = baixo;
-        int indexFim = alto;
+        // Obtendo posição central
+        UserInfo pivot = array.get(array.size() / 2);
 
-        // Get the pivot element from the middle of the list
-        UserInfo userInfoPivot = arrayUserInfo[baixo + (alto - baixo)/2];
-        UserInfo aux;
+        // Separando vetores
+        List<UserInfo> menores = array.stream().filter(instance -> instance.getCredit() < pivot.getCredit()).toList();
+        List<UserInfo> iguais = array.stream().filter(instance -> instance.getCredit() == pivot.getCredit()).toList();
+        List<UserInfo> maiores = array.stream().filter(instance -> instance.getCredit() > pivot.getCredit()).toList();
 
-        // Divide into two lists
-        while (indexInicio <= indexFim) {
-            // If the current value from the left list is smaller than the pivot
-            // element then get the next element from the left list
-
-            while (arrayUserInfo[indexInicio].getCredit() > userInfoPivot.getCredit()) {
-                indexInicio++;
-            }
-            // If the current value from the right list is larger than the pivot
-            // element then get the next element from the right list
-            while (arrayUserInfo[indexFim].getCredit() < userInfoPivot.getCredit()) {
-                indexFim--;
-            }
-
-            // If we have found a value in the left list which is larger than
-            // the pivot element and if we have found a value in the right list
-            // which is smaller than the pivot element then we exchange the
-            // values.
-            // As we are done we can increase i and j
-            if (indexInicio <= indexFim) {
-                aux = arrayUserInfo[indexInicio];
-                arrayUserInfo[indexInicio] = arrayUserInfo[indexFim];
-                arrayUserInfo[indexFim] = aux;
-
-                indexInicio++;
-                indexFim--;
-            }
-        }
-
-        // Recursion
-        if (baixo < indexFim) quickSort(baixo, indexFim);
-        if (indexInicio < alto) quickSort(indexInicio, alto);
+        List<UserInfo> response = new ArrayList<>();
+        response.addAll(this.quickSort(maiores));
+        response.addAll(iguais);
+        response.addAll(this.quickSort(menores));
+        return response;
     }
 
 }
