@@ -53,12 +53,12 @@ public class QuickSortAnalysis implements TableAnalysis<List<UserInfo>> {
             // If the current value from the left list is smaller than the pivot
             // element then get the next element from the left list
 
-            while (arrayUserInfo[indexInicio].getCredit() < userInfoPivot.getCredit()) {
+            while (arrayUserInfo[indexInicio].getCredit() > userInfoPivot.getCredit()) {
                 indexInicio++;
             }
             // If the current value from the right list is larger than the pivot
             // element then get the next element from the right list
-            while (arrayUserInfo[indexFim].getCredit() > userInfoPivot.getCredit()) {
+            while (arrayUserInfo[indexFim].getCredit() < userInfoPivot.getCredit()) {
                 indexFim--;
             }
 

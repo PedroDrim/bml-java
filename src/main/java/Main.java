@@ -1,3 +1,6 @@
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import model.*;
 import model.exception.InvalidParameterException;
 import provider.*;
@@ -7,11 +10,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+/**
+ * Classe principal responsavel por executar as analises e o benchmark
+ */
 public class Main {
 
+    /**
+     * Ponto de entrada da aplicacao
+     * @param args Argumentos iniciais, sendo o primeiro o caminho do arquivo de configuracao
+     * @throws IOException Caso ocorra erro na leitura dos arquivos
+     * @throws InvalidParameterException Caso nenhum argumento seja informado
+     */
     public static void main(String[] args) throws IOException {
 
         if (args.length == 0) throw new InvalidParameterException("Parametros iniciais nao encontrados");
@@ -25,7 +35,7 @@ public class Main {
         TableAnalysis<List<UserInfo>> mergeSortAnalysis = new MergeSortAnalysis();
         TableAnalysis<List<UserInfo>> quickSortAnalysis = new QuickSortAnalysis();
         TableAnalysis<List<UserInfo>> languageSortAnalysis = new LanguageSortAnalysis();
-        TableAnalysis<Double[]> summaryAnalysis = new SummaryAnalysis();
+        TableAnalysis<double[]> summaryAnalysis = new SummaryAnalysis();
 
         for (int index = 0; index < inputList.length; index++) {
             String input = inputList[index];
@@ -35,14 +45,13 @@ public class Main {
             System.out.println("\t[LOG] Read");
             benchmark.start("Read@" + index);
             TableReader tableReader = new TableReader(input);
-            tableReader.open();
             List<UserInfo> userInfoList = tableReader.read();
             benchmark.end("Read@" + index);
             //==================================================
             // Analise dos dados (Summary)
             System.out.println("\t[LOG] Summary");
             benchmark.start("SummaryAnalysis@" + index);
-            Double[] summary = summaryAnalysis.analysis(userInfoList);
+            double[] summary = summaryAnalysis.analysis(userInfoList);
             benchmark.end("SummaryAnalysis@" + index);
             //==================================================
             // Analise dos dados (Merge)
@@ -69,46 +78,41 @@ public class Main {
         benchmark.export(output, TimeFormat.MILISSEGUNDOS);
     }
 
+    /**
+     * Carrega as configuracoes a partir de um arquivo json
+     * @param configFile Caminho do arquivo de configuracao
+     * @return Configuracoes carregadas
+     * @throws IOException Caso ocorra erro na leitura do arquivo
+     */
     public static CustomConfig loadProperties(String configFile) throws IOException {
         String jsonString = Files.readString(Path.of(configFile), StandardCharsets.UTF_8);
         CustomConfig customConfig = parseJsonToConfig(jsonString);
         return customConfig;
     }
 
+    /**
+     * Converte o conteudo json em um objeto de configuracao
+     * (usa a arvore do Gson, sem reflexao, para funcionar tambem em native image)
+     * @param json Conteudo json a ser interpretado
+     * @return Configuracoes extraidas do json
+     * @throws InvalidParameterException Caso alguma chave obrigatoria nao exista no json
+     */
     public static CustomConfig parseJsonToConfig(String json) {
-        // Remove espaços extras, quebras de linha e mantém o formato correto
-        String cleanedJson = json.replace("\n", "").replace("\r", "").replace(" ", "");
+        JsonObject root = JsonParser.parseString(json).getAsJsonObject();
 
-        // Extração manual dos valores
-        Pattern inputListRegex = Pattern.compile("\"INPUT_FILENAME_LIST\":\\[(.*?)\\]");
-        Pattern outputFileRegex = Pattern.compile("\"OUTPUT_FILENAME\":\"(.*?)\"");
+        if (!root.has("INPUT_FILENAME_LIST"))
+            throw new InvalidParameterException("'INPUT_FILENAME_LIST' nao encontrado na configuracao");
+        if (!root.has("OUTPUT_FILENAME"))
+            throw new InvalidParameterException("'OUTPUT_FILENAME' nao encontrado na configuracao");
 
-        // Encontrando correspondências
-        Matcher inputListMatch = inputListRegex.matcher(cleanedJson);
-        Matcher outputFileMatch = outputFileRegex.matcher(cleanedJson);
-
-        // Convertendo INPUT_FILENAME_LIST para String[]
-        String[] inputFileNameList = new String[0];
-        if (inputListMatch.find()) {
-            String[] parts = inputListMatch.group(1).split(",", -1); // Divide pelos elementos da lista
-            inputFileNameList = new String[parts.length];
-            for (int i = 0; i < parts.length; i++) {
-                inputFileNameList[i] = removeSurrounding(parts[i].trim(), "\""); // Remove espaços e aspas
-            }
+        JsonArray inputArray = root.getAsJsonArray("INPUT_FILENAME_LIST");
+        String[] inputFileNameList = new String[inputArray.size()];
+        for (int i = 0; i < inputFileNameList.length; i++) {
+            inputFileNameList[i] = inputArray.get(i).getAsString();
         }
 
-        // Extraindo OUTPUT_FILENAME
-        String outputFileName = outputFileMatch.find() ? outputFileMatch.group(1) : "";
+        String outputFileName = root.get("OUTPUT_FILENAME").getAsString();
 
         return new CustomConfig(inputFileNameList, outputFileName);
     }
-
-    private static String removeSurrounding(String value, String delimiter) {
-        if (value.length() >= 2 * delimiter.length()
-                && value.startsWith(delimiter) && value.endsWith(delimiter)) {
-            return value.substring(delimiter.length(), value.length() - delimiter.length());
-        }
-        return value;
-    }
 }
-
