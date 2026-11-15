@@ -22,7 +22,7 @@ Ferramentas utilizadas neste repositório bem como suas versões:
 1. Clone este repositório com o comando abaixo, onde **\<branch\>** se refere ao experimento que deseja realizar:
 
 ```
-git clone -b <branch> https://github.com/PedroDrim/bml-kotlin
+git clone -b <branch> https://github.com/PedroDrim/bml-java
 ```
 
 2. Instale o [**Docker**](https://docs.docker.com/engine/install/).

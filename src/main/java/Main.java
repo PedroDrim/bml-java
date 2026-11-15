@@ -1,10 +1,15 @@
+import model.SimpleTableAnalysis;
+import model.Table;
 import model.UserInfo;
+import provider.MaxValueAnalysis;
+import provider.MeanAnalysis;
+import provider.MinValueAnalysis;
 
-import java.util.ArrayList;
+import java.io.IOException;
 import java.util.List;
 
 /**
- Classe inicial do programa
+ * Classe inicial do programa
  */
 public class Main {
 
@@ -12,54 +17,54 @@ public class Main {
      * Método de inicialização do projeto
      * @param args Lista de parametros obtidos via console
      */
-    public static void main(String[] args){
+    public static void main(String args[]) throws IOException {
 
-        int tamanho = prepareArgs(args);
+        String arquivo = prepareArgs(args);
+        long leituraInicio = System.currentTimeMillis();
+
+        Table table = new Table(arquivo);
+
+        long leituraFim = System.currentTimeMillis();
+
+        List<UserInfo> list = table.getUserInfoList();
+        SimpleTableAnalysis maxAnalysis = new MaxValueAnalysis();
+        SimpleTableAnalysis minAnalysis = new MinValueAnalysis();
+        SimpleTableAnalysis meanAnalysis = new MeanAnalysis();
+
+        long analiseInicio = System.currentTimeMillis();
+
+        double max = maxAnalysis.analysis(list);
+        double min = minAnalysis.analysis(list);
+        double mean = meanAnalysis.analysis(list);
+
+        long analiseFim = System.currentTimeMillis();
 
         StringBuilder builder = new StringBuilder();
-        List<UserInfo> list = new ArrayList<>();
 
-        long antes = System.currentTimeMillis();
-
-        for(int index = 0; index < tamanho; index++){
-            builder.append("user").append(index);
-            String user = builder.toString();
-
-            builder = new StringBuilder();
-
-            builder.append("password").append(index);
-            String password = builder.toString();
-
-            list.add(new UserInfo(user, password));
-        }
-
-        long time = System.currentTimeMillis() - antes;
-
-        builder = new StringBuilder();
-        builder.append("[OK]Tamanho: ").append(tamanho).append("\n");
-        builder.append("[OK]Tempo: ").append(time).append(" ms");
+        builder.append("[OK]Arquivo: ").append(arquivo).append("\n");
+        builder.append("[OK]Tempo_leitura: ").append((leituraFim - leituraInicio)).append(" ms").append("\n");
+        builder.append("[OK]Tempo_analise: ").append((analiseFim - analiseInicio)).append(" ms").append("\n");
+        builder.append("[OK]Max: ").append(max).append("\n");
+        builder.append("[OK]Min: ").append(min).append("\n");
+        builder.append("[OK]Mean: ").append(mean).append("\n");
 
         System.out.println(builder.toString());
+
     }
 
     /**
      * Método para captura e tratamento dos parametros obtidos via console
      * @param codes Lista de parametros obtidos via console
-     * @return Tamanho de usuários á serem gerados
+     * @return Nome do arquivo de usuarios
      */
-    private static int prepareArgs(String codes[]) {
+    private static String prepareArgs(String codes[]) {
         if(codes.length != 1) {
             System.out.println("Parametros inválidos.");
             System.exit(-1);
         }
 
-        int line = Integer.parseInt(codes[0]);
-
-        if(line <= 0) {
-            System.out.println("Quantidade de linhas menor que 1.");
-            System.exit(-1);
-        }
-
+        String line = codes[0];
         return line;
     }
+
 }
